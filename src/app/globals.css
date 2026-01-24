@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Reset and base styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #F5F5F5;
+  color: #4A4A4A;
+}
+
+/* Login Container */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+/* Login Card */
+.login-card {
+  background-color: #4A4A4A;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 28rem;
+}
+
+/* Login Title */
+.login-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #FF6B35;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-label {
+  display: block;
+  color: #FF6B35;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  background-color: #F5F5F5;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #FF6B35;
+  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3);
+}
+
+/* Button */
+.btn-login {
+  width: 100%;
+  background-color: #FF6B35;
+  color: white;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-login:hover {
+  background-color: #E25A2C;
+}
+
+/* Show Password */
+.show-password {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #FF6B35;
+  cursor: pointer;
+}
+
+.show-password input[type="checkbox"] {
+  margin-right: 0.5rem;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .login-card {
+    padding: 1.5rem;
+  }
+  
+  .login-title {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* =========================================
+   STYLE KHUSUS PRINT (FINAL FIX)
+   ========================================= */
+@media print {
+  /* 1. Paksa Orientasi Landscape agar tabel muat */
+  @page {
+    size: landscape; 
+    margin: 10mm;
+  }
+
+  /* 2. Sembunyikan Sidebar & Elemen tidak penting */
+  #admin-sidebar, 
+  header, 
+  nav, 
+  footer, 
+  .no-print {
+    display: none !important;
+  }
+
+  /* 3. Reset Layout Utama */
+  #admin-main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 4. Reset Body */
+  body {
+    background-color: white !important;
+    color: black !important;
+    font-size: 10pt; /* Perkecil font global saat print */
+  }
+  
+  /* 5. Pastikan background warna tabel tercetak */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 6. Hilangkan scrollbar */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
