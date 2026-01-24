@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',      
-  password: '',      
-  database: 'db_combie_coffee',
-};
-
 export async function POST(request) {
   let connection;
 
@@ -20,16 +13,28 @@ export async function POST(request) {
       items = [] 
     } = body;
 
-    // Buat koneksi manual agar bisa melakukan Transaction
+    // --- PERBAIKAN: GUNAKAN PROCESS.ENV & TAMBAH SSL ---
+    // Jangan hardcode localhost lagi. Kita ambil settingan dari Vercel.
+    const dbConfig = {
+      host: process.env.DB_HOST,       // Ambil dari Vercel
+      user: process.env.DB_USER,       // Ambil dari Vercel
+      password: process.env.DB_PASSWORD, // Ambil dari Vercel
+      database: process.env.DB_NAME,   // Ambil dari Vercel
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 3306, // Otomatis 4000 di Vercel
+      // WAJIB: Settingan SSL untuk TiDB Cloud
+      ssl: {
+          minVersion: 'TLSv1.2',
+          rejectUnauthorized: true
+      }
+    };
+
+    // Buat koneksi baru pakai config di atas
     connection = await mysql.createConnection(dbConfig);
     
     // MULAI TRANSAKSI
     await connection.beginTransaction();
 
-    // --- PERBAIKAN LOGIKA ANTRIAN (ANTI DUPLIKAT) ---
-    // 1. Ambil nomor antrian TERAKHIR hari ini.
-    // 2. Gunakan 'FOR UPDATE' untuk mengunci baris ini sementara sampai proses insert selesai.
-    //    Ini mencegah dua orang mendapatkan nomor terakhir yang sama di waktu bersamaan.
+    // --- LOGIKA ANTRIAN (SAMA SEPERTI SEBELUMNYA) ---
     const [rows] = await connection.execute(
       `SELECT nomor_antrian 
        FROM pesanan 
@@ -39,19 +44,16 @@ export async function POST(request) {
        FOR UPDATE`
     );
 
-    let nextNumber = 1; // Default jika belum ada pesanan hari ini
+    let nextNumber = 1; 
 
     if (rows.length > 0) {
-      // Format Database: "A-001", "A-015", dst.
-      // Kita ambil bagian angkanya saja setelah strip "-"
-      const lastAntrian = rows[0].nomor_antrian; // Contoh: "A-005"
-      const lastNumberStr = lastAntrian.split('-')[1]; // Ambil "005"
-      const lastNumberInt = parseInt(lastNumberStr, 10); // Ubah jadi angka 5
+      const lastAntrian = rows[0].nomor_antrian; 
+      const lastNumberStr = lastAntrian.split('-')[1]; 
+      const lastNumberInt = parseInt(lastNumberStr, 10); 
       
-      nextNumber = lastNumberInt + 1; // Jadi 6
+      nextNumber = lastNumberInt + 1; 
     }
 
-    // Format ulang menjadi "A-006"
     const nomor_antrian = `A-${String(nextNumber).padStart(3, '0')}`;
     // ------------------------------------------------
 
@@ -77,8 +79,8 @@ export async function POST(request) {
 
       await connection.execute(
         `INSERT INTO detail_pesanan 
-         (id_pesanan, id_menu, nama_menu_snapshot, qty, catatan_item, harga_satuan, subtotal_item) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (id_pesanan, id_menu, nama_menu_snapshot, qty, catatan_item, harga_satuan, subtotal_item) 
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           id_pesanan_baru, 
           item.id_menu, 
@@ -91,8 +93,7 @@ export async function POST(request) {
       );
     }
 
-    // KOMIT TRANSAKSI (Simpan Permanen)
-    // Di titik ini, lock 'FOR UPDATE' dilepas, dan orang berikutnya baru bisa ambil nomor.
+    // KOMIT TRANSAKSI
     await connection.commit();
 
     return NextResponse.json({ 
@@ -103,7 +104,6 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    // Jika error, batalkan semua perubahan
     if (connection) await connection.rollback();
     console.error('Database Error:', error);
     return NextResponse.json({ 
@@ -111,7 +111,6 @@ export async function POST(request) {
       message: 'Gagal memproses pesanan: ' + error.message 
     }, { status: 500 });
   } finally {
-    // Tutup koneksi
     if (connection) await connection.end();
   }
 }
