@@ -32,7 +32,7 @@ export default function EditMenuPage() {
   useEffect(() => {
     async function fetchMenu() {
       try {
-        const res = await fetch(`/api/menu?id=${id}`); 
+        const res = await fetch(`/api/admin/menu?id=${id}`); 
         const json = await res.json();
         
         const dataMenu = Array.isArray(json.data) ? json.data[0] : json.data;
