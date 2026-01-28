@@ -28,26 +28,33 @@ export default function LoginAdminPage() {
 
       const data = await res.json();
 
-      // --- DEBUGGING (Cek Console Browser F12 jika error) ---
       console.log("Respon Login:", data);
 
       if (data.success) {
+        // --- 1. SIMPAN KE COOKIE (WAJIB UNTUK MIDDLEWARE) ---
+        // Middleware hanya bisa baca Cookie, tidak bisa baca LocalStorage
+        // Kita simpan selama 1 hari (86400 detik)
+        const userRole = data.user.role ? data.user.role.toLowerCase() : 'admin';
+        
+        document.cookie = `user_role=${userRole}; path=/; max-age=86400`;
+        // Opsional: Simpan token juga di cookie jika nanti API butuh
+        // document.cookie = `token=${data.token}; path=/; max-age=86400`;
+
+        // --- 2. Simpan ke LocalStorage (Untuk UI Frontend saja) ---
         localStorage.setItem('admin_token', 'active');
         localStorage.setItem('admin_user', JSON.stringify(data.user));
         
-        // --- LOGIKA PENENTUAN ARAH (ROUTING) ---
-        // Kita ambil role dari database, lalu kecilkan hurufnya biar aman (lowercase)
-        const userRole = data.user.role ? data.user.role.toLowerCase() : '';
-
-        console.log("Role User Adalah:", userRole); // Cek ini di Console
+        // --- 3. ARAHKAN SESUAI ROLE ---
+        console.log("Redirecting user with role:", userRole);
 
         if (userRole === 'owner') {
-            // Jika di database role-nya 'owner' -> Ke Owner Panel
             router.push('/owner/dashboard');
         } else {
-            // Selain itu (admin, kasir, barista) -> Ke Admin Panel
             router.push('/admin/dashboard');
         }
+        
+        // Refresh agar middleware mendeteksi cookie baru
+        router.refresh();
 
       } else {
         setError(data.message || "Username atau Password salah!");

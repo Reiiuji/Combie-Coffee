@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Home, Utensils, ShoppingCart, FileText, Lock, LogOut } from 'lucide-react';
+import { Home, Utensils, FileText, Lock, LogOut } from 'lucide-react';
 
 const menuItems = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
@@ -19,9 +19,19 @@ export default function AdminSidebar() {
   // State untuk mengontrol Modal Logout
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // --- UPDATE LOGIKA LOGOUT DI SINI ---
   const handleLogout = () => {
-    // Logika logout (hapus cookie/session jika ada)
-    router.push('/');
+    // 1. Hapus Cookie (PENTING AGAR MIDDLEWARE TIDAK MENGIZINKAN MASUK LAGI)
+    document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+    // 2. Hapus LocalStorage (Pembersihan di sisi Client)
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+
+    // 3. Redirect ke Halaman Login & Refresh agar Middleware bekerja
+    router.push('/login-admin');
+    router.refresh(); 
   };
 
   return (

@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Filter, Printer, FileText, Menu } from 'lucide-react';
+import { Filter, Printer, FileText } from 'lucide-react';
 
 export default function LaporanOwnerPage() {
   const [laporan, setLaporan] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Set Default Tanggal (Awal Bulan s/d Hari Ini)
   const date = new Date();
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
   const currentDay = new Date().toISOString().split('T')[0];
@@ -15,16 +14,12 @@ export default function LaporanOwnerPage() {
   const [startDate, setStartDate] = useState(firstDay);
   const [endDate, setEndDate] = useState(currentDay);
 
-  // Fungsi Fetch Data
   const fetchLaporan = async () => {
     if (!startDate || !endDate) return;
-
     setLoading(true);
     try {
-      // Reuse API yang sama karena datanya sama
       const res = await fetch(`/api/laporan?start=${startDate}&end=${endDate}`);
       const data = await res.json();
-      
       if (data.success) {
         setLaporan(data.data);
       } else {
@@ -42,7 +37,6 @@ export default function LaporanOwnerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  // Hitung Grand Total
   const grandTotal = laporan.reduce((acc, curr) => {
     const nilai = Number(curr.subtotal) || 0; 
     return acc + nilai;
@@ -51,29 +45,44 @@ export default function LaporanOwnerPage() {
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans pb-10">
       
-      {/* --- CSS KHUSUS PRINT (Updated Colors) --- */}
+      {/* --- PERBAIKAN CSS PRINT --- */}
       <style jsx global>{`
         @media print {
-          nav, aside, header, .no-print { display: none !important; }
-          main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-          body { background-color: white !important; -webkit-print-color-adjust: exact; }
+          /* Sembunyikan Sidebar Owner berdasarkan ID */
+          #owner-sidebar, nav, aside, header, .no-print { 
+            display: none !important; 
+          }
+          
+          /* Paksa konten utama menjadi lebar penuh dan hapus margin */
+          main, body, .print-container { 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            width: 100% !important; 
+            max-width: 100% !important; 
+          }
+
+          /* Reset warna background untuk cetak */
+          body { 
+            background-color: white !important; 
+            -webkit-print-color-adjust: exact; 
+          }
+          
           .print-container { 
             box-shadow: none !important; 
             border: none !important;
             padding: 0 !important;
-            margin-top: 20px !important;
+            margin-top: 10px !important;
           }
-          /* Warna Header Tabel jadi Merah Bata */
+
+          /* Styling Tabel saat Print */
           th { background-color: #A04040 !important; color: white !important; }
           tr:nth-child(even) { background-color: #F3F4F6 !important; }
         }
       `}</style>
 
-      {/* HEADER MERAH (Owner Theme) */}
+      {/* HEADER MERAH */}
       <header className="bg-[#A04040] px-8 py-5 text-white shadow-sm flex justify-between items-center mb-8 no-print">
-        <div className="flex items-center gap-3">
-            {/* Menu icon removed or kept depending on layout needs, kept here for structure */}
-        </div> 
+        <div />
         <div className="text-sm font-bold tracking-wide">Halo, Owner</div>
       </header>
 
@@ -134,7 +143,6 @@ export default function LaporanOwnerPage() {
             <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        {/* Header Tabel Merah */}
                         <tr className="bg-[#A04040] text-white">
                             <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider text-center border-r border-red-300/30">No</th>
                             <th className="px-6 py-4 text-sm font-bold uppercase tracking-wider border-r border-red-300/30">Tanggal & Waktu</th>
