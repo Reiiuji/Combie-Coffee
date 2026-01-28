@@ -24,15 +24,15 @@ function SearchContent() {
   // State
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+   
   // Keyword ambil dari URL atau string kosong
   const [keyword, setKeyword] = useState(searchParams.get("q") || "");
-  
+   
   // Kategori default All
   const [activeCategory, setActiveCategory] = useState(
     searchParams.get("cat") || "All"
   );
-  
+   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // 1. FETCH DATA (Hanya berdasarkan Keyword)
@@ -40,8 +40,6 @@ function SearchContent() {
     async function fetchSearch() {
       setLoading(true);
       try {
-        // PERBAIKAN: Hapus parameter '&cat=...' dari URL API.
-        // Biarkan API mengambil semua item yang cocok dengan keyword.
         const res = await fetch(`/api/customer/menu?q=${keyword}`);
         const result = await res.json();
         
@@ -57,37 +55,39 @@ function SearchContent() {
         setLoading(false);
       }
     }
-    // Debounce sedikit biar ga spam API kalau ngetik cepet (Opsional, tapi bagus)
+    // Debounce sedikit biar ga spam API kalau ngetik cepet
     const timeoutId = setTimeout(() => {
         fetchSearch();
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [keyword]); // Hapus activeCategory dari dependency array agar tidak fetch ulang saat ganti tab
+  }, [keyword]); 
 
-  // 2. LOGIKA FILTER FRONTEND (Sama seperti halaman Menu)
+  // 2. LOGIKA FILTER FRONTEND
   const filteredMenus = menus.filter((item) => {
-    // Kalau kategori All, tampilkan semua hasil pencarian
     if (activeCategory === "All") return true;
 
     const dbCat = item.kategori ? item.kategori.toLowerCase() : "";
 
-    // Mapping Kategori Frontend -> Database
-    if (activeCategory === "Coffee") {
-        return dbCat === "coffee";
-    }
-    if (activeCategory === "Non Coffee") {
-        return dbCat === "noncoffee" || dbCat === "tea";
-    }
-    if (activeCategory === "Snack") {
-        return dbCat === "snack" || dbCat === "food";
-    }
+    if (activeCategory === "Coffee") return dbCat === "coffee";
+    if (activeCategory === "Non Coffee") return dbCat === "noncoffee" || dbCat === "tea";
+    if (activeCategory === "Snack") return dbCat === "snack" || dbCat === "food";
+    
     return false;
   });
 
+  // --- PERBAIKAN LOGIC GAMBAR (SUPAYA CLOUDINARY BISA MUNCUL) ---
   const getImageUrl = (path) => {
     if (!path) return "/images/landing-coffee.jpg";
-    return path.startsWith("/") ? path : `/images/${path}`;
+    
+    // 1. Jika link Cloudinary (http...), pakai langsung
+    if (path.startsWith("http")) return path;
+    
+    // 2. Jika path lokal absolut
+    if (path.startsWith("/")) return path;
+    
+    // 3. Sisanya dianggap file lokal di folder /images/
+    return `/images/${path}`;
   };
 
   const getCartItem = (id) => cart.find((item) => item.id_menu === id);
@@ -170,7 +170,7 @@ function SearchContent() {
         </div>
       </div>
 
-      {/* MENU LIST (Gunakan filteredMenus) */}
+      {/* MENU LIST */}
       <div className="px-5 mt-6 space-y-6">
         {loading ? (
           <p className="text-center text-gray-400 py-10">Mencari menu...</p>
@@ -191,6 +191,7 @@ function SearchContent() {
                     src={getImageUrl(item.foto_url)}
                     alt={item.nama_menu}
                     className="w-full h-full object-cover"
+                    onError={(e) => e.target.src='/images/landing-coffee.jpg'}
                   />
                 </div>
 
