@@ -13,9 +13,12 @@ export default function CheckoutPage() {
   const [meja, setMeja] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Helper untuk gambar (jika path dari DB atau local)
+  // --- PERBAIKAN DI SINI: Helper untuk gambar ---
   const getImageUrl = (path) => {
     if (!path) return "/images/landing-coffee.jpg"; // Gambar default
+    // Jika path adalah URL lengkap (Cloudinary), gunakan langsung
+    if (path.startsWith("http")) return path;
+    // Jika path lokal
     return path.startsWith("/") ? path : `/images/${path}`;
   };
 
@@ -44,7 +47,7 @@ export default function CheckoutPage() {
     setLoading(true);
 
     const orderData = {
-      nomor_meja: meja,
+      nomor_meja: meja, // Bisa kosong jika input meja dinonaktifkan
       total_harga: totalPrice,
       total_bayar: totalPrice,
       items: cart,
@@ -94,25 +97,10 @@ export default function CheckoutPage() {
       </div>
 
       <form onSubmit={handleOrder} className="p-5 space-y-6 max-w-lg mx-auto">
-        {/* 1. INFO LOKASI (Style DARK sesuai Request sebelumnya) */}
-        {/* <div className="bg-[#333333] p-6 rounded-2xl shadow-xl border border-gray-700">
-          <h2 className="text-[#FF9F1C] text-sm font-bold mb-4 flex items-center gap-2 uppercase tracking-wide">
-             <MapPin className="w-4 h-4" /> Info Lokasi
-          </h2>
-          <div className="space-y-1">
-            <label className="text-gray-400 text-[10px] uppercase font-bold tracking-wider ml-1">Nomor Meja</label>
-            <input 
-              type="number" 
-              placeholder="Contoh: 12" 
-              value={meja}
-              onChange={(e) => setMeja(e.target.value)}
-              className="w-full p-4 rounded-xl bg-[#9CA3AF] placeholder-gray-600 text-[#1F2937] font-bold text-lg outline-none focus:ring-2 focus:ring-[#FF9F1C] transition-all"
-            />
-            <p className="text-gray-500 text-[10px] italic ml-1 mt-1">*Kosongkan jika take away</p>
-          </div>
-        </div> */}
+        {/* INFO LOKASI (Dinonaktifkan sesuai request sebelumnya) */}
+        {/* <div className="bg-[#333333] p-6 rounded-2xl shadow-xl border border-gray-700"> ... </div> */}
 
-        {/* 2. RINGKASAN PESANAN (Style WHITE CARD sesuai Gambar Mobile App) */}
+        {/* RINGKASAN PESANAN */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-lg text-[#2D3E50] mb-4">Pesanan</h3>
 
@@ -125,6 +113,10 @@ export default function CheckoutPage() {
                     src={getImageUrl(item.foto_url)}
                     alt={item.nama_menu}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                        e.target.onerror = null; 
+                        e.target.src = "/images/landing-coffee.jpg";
+                    }}
                   />
                 </div>
 
@@ -134,7 +126,7 @@ export default function CheckoutPage() {
                     {item.nama_menu}
                   </h4>
                   <p className="text-[#2D3E50] text-sm font-medium">
-                    {Number(item.harga).toLocaleString("id-ID")}
+                    Rp {Number(item.harga).toLocaleString("id-ID")}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5 truncate max-w-[150px]">
                     {item.note
@@ -170,7 +162,6 @@ export default function CheckoutPage() {
             <div className="flex justify-between text-gray-500 text-sm font-medium">
               <span>Pajak</span>
               <span className="text-[#2D3E50]">Rp 0</span>
-              {/* Atau hitung pajak jika perlu: totalPrice * 0.1 */}
             </div>
             <div className="flex justify-between items-center pt-2 mt-2 border-t border-dashed border-gray-200">
               <span className="font-bold text-[#2D3E50] text-base">

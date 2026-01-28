@@ -18,29 +18,7 @@ export default function DashboardContent() {
   const [searchNomor, setSearchNomor] = useState('');
   const router = useRouter();
 
-  // --- FUNGSI BARU: MEMECAH STRING CATATAN UMUM ---
-  // const parseLokasi = (catatan) => {
-  //   if (!catatan) return '-';
-
-  //   // Cek apakah string mengandung kata "Meja" (Case insensitive)
-  //   if (catatan.toLowerCase().includes('meja')) {
-  //     // Logic: Split berdasarkan titik dua ":"
-  //     // Contoh: "Meja No: 12" -> menjadi array ["Meja No", " 12"]
-  //     const parts = catatan.split(':');
-      
-  //     // Jika ada bagian setelah titik dua, ambil dan bersihkan spasi
-  //     if (parts.length > 1) {
-  //       return `Meja : ${parts[1].trim()}`;
-  //     }
-      
-  //     // Fallback jika formatnya beda (misal cuma "Meja 12")
-  //     return catatan; 
-  //   }
-
-  //   // Jika "Take Away", kembalikan apa adanya
-  //   return catatan;
-  // };
-
+  // --- 1. FUNGSI PENCARIAN ---
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchNomor.trim()) return alert("Masukkan Nomor Antrian");
@@ -63,10 +41,9 @@ export default function DashboardContent() {
     }
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // --- 2. FUNGSI AMBIL DATA ---
+  const fetchData = async () => {
       try {
-        setLoading(true);
         const [transactionsRes, statsRes] = await Promise.all([
           fetch('/api/transaksi/active'),
           fetch('/api/transaksi/stats')
@@ -87,9 +64,17 @@ export default function DashboardContent() {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
-    fetchData();
+  // --- 3. AUTO REFRESH SETIAP 5 DETIK ---
+  useEffect(() => {
+    fetchData(); // Load pertama kali
+
+    const interval = setInterval(() => {
+        fetchData(); // Load ulang tiap 5 detik
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleTransactionClick = (transactionId) => {
@@ -116,7 +101,7 @@ export default function DashboardContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-white p-5 rounded-xl shadow-sm flex items-center gap-4">
                 <div className="w-20 h-20 bg-[#5B79F4] rounded-xl flex items-center justify-center text-white text-3xl shadow-lg shadow-indigo-200"><FaMoneyBillWave /></div>
-                <div><p className="text-gray-400 font-medium text-sm">Total Penjualan</p><h3 className="text-2xl font-bold text-gray-800">{stats.totalPenjualan}</h3></div>
+                <div><p className="text-gray-400 font-medium text-sm">Total Penjualan</p><h3 className="text-2xl font-bold text-gray-800">{new Intl.NumberFormat('id-ID').format(stats.totalPenjualan)}</h3></div>
             </div>
             <div className="bg-white p-5 rounded-xl shadow-sm flex items-center gap-4">
                 <div className="w-20 h-20 bg-[#F55D4A] rounded-xl flex items-center justify-center text-white text-4xl shadow-lg shadow-red-200"><FiUser /></div>
@@ -130,10 +115,8 @@ export default function DashboardContent() {
 
         {/* INPUT PENCARIAN */}
         <div className="mb-10">
-            <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-4 gap-4">
-                <div className="bg-white px-6 py-3 rounded-md shadow-sm w-full md:w-auto">
-                    <h2 className="text-lg font-bold text-gray-800">Cari & Proses Pesanan</h2>
-                </div>
+            <div className="bg-white px-6 py-3 rounded-md shadow-sm w-full mb-4">
+                <h2 className="text-lg font-bold text-gray-800">Cari & Proses Pesanan</h2>
             </div>
 
             <div className="flex flex-col md:flex-row gap-6 items-end">
@@ -157,10 +140,10 @@ export default function DashboardContent() {
             </div>
         </div>
 
-        {/* DAFTAR ANTRIAN AKTIF (CARD) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* DAFTAR ANTRIAN AKTIF (CLEAN TANPA INFO MEJA) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {transactions.length === 0 ? (
-                <div className="col-span-full text-center py-10 text-gray-400">
+                <div className="col-span-full text-center py-10 text-gray-400 bg-white rounded-lg shadow-sm">
                     Tidak ada antrian aktif saat ini.
                 </div>
             ) : (
@@ -168,21 +151,14 @@ export default function DashboardContent() {
                     <div 
                         key={transaction.id}
                         onClick={() => handleTransactionClick(transaction.id)}
-                        className="bg-white p-6 rounded-md shadow-sm flex flex-col items-center justify-center gap-2 cursor-pointer hover:shadow-md transition-all border border-transparent hover:border-orange-200"
+                        className="bg-white p-8 rounded-md shadow-sm flex flex-col items-center justify-center gap-1 cursor-pointer hover:shadow-md transition-all border border-transparent hover:border-orange-300 group"
                     >
-                        {/* No Antrian */}
-                        <span className="font-bold text-gray-800 text-xl">
-                            No : {transaction.nomor_antrian}
-                        </span>
+                        <span className="text-gray-500 text-sm font-medium">Antrian</span>
                         
-                        {/* Info Lokasi / Meja (Dari catatan_umum)
-                        <span className={`text-lg font-semibold px-4 py-1 rounded-full ${
-                            transaction.catatan_umum?.toLowerCase().includes('take away') 
-                            ? 'bg-blue-100 text-blue-700' // Style untuk Take Away
-                            : 'bg-orange-100 text-orange-700' // Style untuk Meja
-                        }`}>
-                           {parseLokasi(transaction.catatan_umum)}
-                        </span> */}
+                        {/* HANYA NOMOR ANTRIAN SAJA */}
+                        <span className="font-extrabold text-gray-800 text-3xl group-hover:text-orange-500 transition-colors">
+                            {transaction.nomor_antrian}
+                        </span>
                     </div>
                 ))
             )}

@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link"; // Image tidak perlu di-import lagi karena kita pakai tag <img> biasa
+import Link from "next/link"; 
 import { Edit, Trash2 } from 'lucide-react';
 
+// MAPPING KATEGORI (Food -> Snack)
 const kategoriMap = {
   coffee: "Coffee",
   tea: "Tea",
   noncoffee: "Non Coffee",
-  food: "Makanan",
+  food: "Snack", // <-- Update di sini
   other: "Lainnya",
 };
 
@@ -17,7 +18,6 @@ export default function MenuTableClient({ searchTerm }) {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Fetch Data
   useEffect(() => {
     async function fetchMenus() {
       try {
@@ -35,7 +35,6 @@ export default function MenuTableClient({ searchTerm }) {
     fetchMenus();
   }, []);
 
-  // Handle Delete
   const handleDelete = async (id) => {
     if (!window.confirm('Yakin ingin menghapus menu ini?')) return;
     try {
@@ -55,7 +54,6 @@ export default function MenuTableClient({ searchTerm }) {
     }
   };
 
-  // Filter Search
   const safeSearch = (searchTerm || "").toLowerCase();
   const filteredMenus = menus.filter(item => 
     (item.nama_menu || "").toLowerCase().includes(safeSearch)
@@ -84,22 +82,19 @@ export default function MenuTableClient({ searchTerm }) {
             filteredMenus.map((menu, idx) => (
               <tr key={menu.id_menu} className={`${idx % 2 === 0 ? 'bg-[#FCFBFB]' : 'bg-[#F7F3F3]'} hover:bg-orange-50`}>
                 
-                {/* NO */}
                 <td className="px-4 py-4 text-sm font-bold text-[#8B4545] border-r border-[#E0CACA]">{idx + 1}</td>
                 
-                {/* GAMBAR (BAGIAN INI YANG DIPERBARUI) */}
                 <td className="px-4 py-4 border-r border-[#E0CACA]">
                   <div className="flex justify-center">
                     <div className="h-12 w-16 overflow-hidden rounded bg-white border border-gray-200">
                       <img
                         src={
                           menu.foto_url && menu.foto_url.startsWith('http')
-                            ? menu.foto_url // 1. Link Cloudinary (Internet)
-                            : `/images/${menu.foto_url}` // 2. Link Local (Folder Laptop)
+                            ? menu.foto_url 
+                            : `/images/${menu.foto_url}`
                         }
                         alt={menu.nama_menu}
                         className="h-full w-full object-cover"
-                        // Jika gambar error/tidak ketemu, ganti ke placeholder default
                         onError={(e) => { 
                             e.target.onerror = null; 
                             e.target.src = '/images/placeholder.jpg'; 
@@ -109,22 +104,18 @@ export default function MenuTableClient({ searchTerm }) {
                   </div>
                 </td>
                 
-                {/* NAMA */}
                 <td className="px-4 py-4 text-sm font-bold text-[#8B4545] border-r border-[#E0CACA]">
                   {menu.nama_menu}
                 </td>
                 
-                {/* KETERANGAN (Deskripsi) */}
                 <td className="px-4 py-4 text-xs text-[#8B4545] border-r border-[#E0CACA] max-w-[180px]">
                   <div className="line-clamp-2">{menu.deskripsi || '-'}</div>
                 </td>
                 
-                {/* JENIS (Kategori) */}
                 <td className="px-4 py-4 text-sm font-bold text-[#8B4545] border-r border-[#E0CACA]">
                    {kategoriMap[menu.kategori] || menu.kategori}
                 </td>
                 
-                {/* STATUS SHOT */}
                 <td className="px-4 py-4 border-r border-[#E0CACA]">
                    {menu.status_ketersediaan === 'ready' ? (
                      <span className="bg-[#00E676] text-white font-bold px-3 py-1 rounded-full text-[10px] uppercase shadow-sm">
@@ -137,11 +128,8 @@ export default function MenuTableClient({ searchTerm }) {
                    )}
                 </td>
                 
-                {/* AKSI */}
                 <td className="px-4 py-4">
                   <div className="flex justify-center items-center gap-2">
-                    
-                    {/* Tombol Hapus */}
                     <button 
                       onClick={() => handleDelete(menu.id_menu)}
                       disabled={deletingId === menu.id_menu}
@@ -150,14 +138,12 @@ export default function MenuTableClient({ searchTerm }) {
                       <Trash2 size={16} />
                     </button>
 
-                    {/* Tombol Edit */}
                     <Link 
                       href={`/admin/menu/edit/${menu.id_menu}`}
                       className="bg-[#5C6BC0] hover:bg-[#3f51b5] text-white p-1.5 rounded shadow-sm transition"
                     >
                       <Edit size={16} />
                     </Link>
-
                   </div>
                 </td>
 

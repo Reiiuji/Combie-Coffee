@@ -30,7 +30,11 @@ export default function CartPage() {
 
   const getImageUrl = (path) => {
     if (!path) return "/images/landing-coffee.jpg";
+    // Jika path sudah merupakan URL lengkap (Cloudinary), gunakan langsung
+    if (path.startsWith("http")) return path;
+    // Jika path lokal diawali slash
     if (path.startsWith("/")) return path;
+    // Jika path lokal tanpa slash (misal nama file saja)
     return `/images/${path}`;
   };
 

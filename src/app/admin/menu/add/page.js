@@ -2,8 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiImage, FiUpload, FiX, FiSave, FiRotateCcw } from 'react-icons/fi';
-import Link from 'next/link';
+import { FiImage, FiUpload, FiX } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 
 export default function AddMenuPage() {
@@ -12,18 +11,18 @@ export default function AddMenuPage() {
   const [preview, setPreview] = useState(null);
   const [formData, setFormData] = useState({
     nama_menu: '',
-    kategori: 'Coffee',
+    kategori: 'coffee', // Default
     deskripsi: '',
     harga: '',
     status_ketersediaan: true // Default Tersedia
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Kategori sesuai desain
+  // Kategori UI (Makanan diganti jadi Snack)
   const categories = [
     { id: 'Coffee', label: 'Coffee' },
     { id: 'Non Coffee', label: 'Non Coffee' },
-    { id: 'Snack', label: 'Snack' }, // Mapping 'Food' ke 'Snack' utk tampilan
+    { id: 'Snack', label: 'Snack' }, // Tampilan di Layar "Snack"
     { id: 'Tea', label: 'Tea' } 
   ];
 
@@ -33,11 +32,9 @@ export default function AddMenuPage() {
   };
 
   const handleCategoryChange = (cat) => {
-    // Mapping balik Snack -> Food jika perlu disesuaikan dengan DB, 
-    // atau biarkan jika DB menerima string bebas.
-    // Asumsi DB pakai ENUM: 'coffee','tea','noncoffee','food','other'
+    // Logic: Kalau pilih "Snack" di UI, simpan ke database sebagai "food"
     let dbValue = cat.toLowerCase().replace(" ", "");
-    if(cat === 'Snack') dbValue = 'food';
+    if(cat === 'Snack') dbValue = 'food'; 
 
     setFormData(prev => ({ ...prev, kategori: dbValue }));
   };
@@ -72,7 +69,6 @@ export default function AddMenuPage() {
     try {
       const formDataToSend = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        // Convert status boolean ke string enum jika perlu, atau biarkan backend handle
         if (key === 'status_ketersediaan') {
             formDataToSend.append(key, value ? 'ready' : 'habis');
         } else {
@@ -122,21 +118,16 @@ export default function AddMenuPage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans pb-10">
-      
-      {/* Header Orange (Konsisten) */}
       <header className="bg-[#F0AD6D] px-8 py-5 text-white shadow-sm flex justify-between items-center mb-8">
         <div /> 
         <div className="text-sm font-bold tracking-wide">Halo, Admin</div>
       </header>
 
-      {/* Main Content Card */}
       <div className="max-w-6xl mx-auto bg-white rounded-3xl shadow-sm p-8 md:p-12">
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-12">
           
-          {/* --- KOLOM KIRI (Gambar, Nama, Harga) --- */}
+          {/* KOLOM KIRI (Gambar, Nama, Harga) */}
           <div className="w-full md:w-5/12 flex flex-col gap-6">
-            
-            {/* Upload Area (Dashed Orange) */}
             <div className="flex justify-center">
                 <div 
                     onClick={triggerFileInput}
@@ -153,7 +144,6 @@ export default function AddMenuPage() {
                         </>
                     ) : (
                         <div className="text-orange-300 flex flex-col items-center">
-                            {/* Icon Gambar Placeholder */}
                             <FiImage size={80} strokeWidth={1.5} />
                             <span className="text-sm font-bold mt-2 uppercase tracking-widest text-orange-300">Upload Foto</span>
                         </div>
@@ -161,7 +151,6 @@ export default function AddMenuPage() {
                 </div>
             </div>
 
-            {/* Input Nama Menu */}
             <div>
                 <label className="block text-gray-400 font-bold text-sm mb-2">Nama Menu</label>
                 <input 
@@ -175,7 +164,6 @@ export default function AddMenuPage() {
                 />
             </div>
 
-            {/* Input Harga */}
             <div>
                 <label className="block text-gray-400 font-bold text-sm mb-2">Harga</label>
                 <input 
@@ -190,7 +178,7 @@ export default function AddMenuPage() {
             </div>
           </div>
 
-          {/* --- KOLOM KANAN (Jenis, Keterangan, Stok/Status, Tombol) --- */}
+          {/* KOLOM KANAN (Jenis, Keterangan, Stok/Status, Tombol) */}
           <div className="w-full md:w-7/12 flex flex-col gap-6">
             
             {/* Jenis (Pills) */}
@@ -198,7 +186,7 @@ export default function AddMenuPage() {
                 <label className="block text-gray-400 font-bold text-sm mb-3">Jenis</label>
                 <div className="flex flex-wrap gap-3">
                     {categories.map((cat) => {
-                        // Cek apakah kategori ini yang dipilih (case insensitive match logic sederhana)
+                        // Logic seleksi: Jika di database 'food', maka tombol 'Snack' yang aktif
                         const isSelected = formData.kategori.toLowerCase().includes(cat.id.toLowerCase().replace(" ", "")) || 
                                            (cat.id === 'Snack' && formData.kategori === 'food');
                         
@@ -209,8 +197,8 @@ export default function AddMenuPage() {
                                 onClick={() => handleCategoryChange(cat.id)}
                                 className={`px-6 py-2 rounded-full font-bold text-sm transition-all shadow-sm ${
                                     isSelected 
-                                    ? 'bg-[#D1D5DB] text-gray-800 shadow-inner' // Selected style (Grayish)
-                                    : 'bg-[#E5E7EB] text-gray-500 hover:bg-gray-200' // Default style
+                                    ? 'bg-[#D1D5DB] text-gray-800 shadow-inner' 
+                                    : 'bg-[#E5E7EB] text-gray-500 hover:bg-gray-200'
                                 }`}
                             >
                                 {cat.label}
@@ -233,11 +221,10 @@ export default function AddMenuPage() {
                 />
             </div>
 
-            {/* Status Ketersediaan (Toggle) */}
+            {/* Status Ketersediaan */}
             <div>
                 <label className="block text-gray-400 font-bold text-sm mb-3">Status Ketersediaan</label>
                 <div className="flex items-center gap-4">
-                    {/* Custom Toggle Switch */}
                     <div 
                         onClick={toggleStatus}
                         className={`w-16 h-8 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
@@ -256,7 +243,7 @@ export default function AddMenuPage() {
                 </div>
             </div>
 
-            {/* Tombol Aksi (Simpan & Reset) */}
+            {/* Tombol Aksi */}
             <div className="mt-auto flex gap-4 pt-8">
                 <button
                     type="submit"
