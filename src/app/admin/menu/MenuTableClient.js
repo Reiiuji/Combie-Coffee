@@ -21,7 +21,7 @@ export default function MenuTableClient({ searchTerm }) {
   useEffect(() => {
     async function fetchMenus() {
       try {
-        const res = await fetch("/api/menu");
+        const res = await fetch("/api/admin/menu");
         const data = await res.json();
         if (data.success || data.ok) {
           setMenus(data.data || []);
@@ -40,7 +40,7 @@ export default function MenuTableClient({ searchTerm }) {
     if (!window.confirm('Yakin ingin menghapus menu ini?')) return;
     try {
       setDeletingId(id);
-      const response = await fetch(`/api/menu?id=${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/admin/menu?id=${id}`, { method: 'DELETE' });
       const result = await response.json();
       if (result.success || result.ok) {
         setMenus(prev => prev.filter(m => m.id_menu !== id));
