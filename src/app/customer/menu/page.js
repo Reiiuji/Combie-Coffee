@@ -6,14 +6,14 @@ import { useCart } from '@/context/CartContext';
 import { 
   Home, ShoppingBag, Search, Menu, Plus, 
   Star
-} from 'lucide-react'; // Hapus Heart dari import jika tidak dipakai
+} from 'lucide-react'; 
 
 export default function CustomerMenuPage() {
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('Coffee');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+   
   const { addToCart, totalQty } = useCart();
 
   useEffect(() => {
@@ -40,12 +40,25 @@ export default function CustomerMenuPage() {
     return false;
   });
 
-  // Ambil 5 menu teratas (karena API sudah sort by penjualan terbanyak)
+  // Ambil 5 menu teratas
   const bestSellerMenus = menus.slice(0, 5); 
 
+  // --- FUNGSI INI YANG DIPERBAIKI ---
   const getImageUrl = (path) => {
-    if (!path) return '/images/landing-coffee.jpg';
-    return path.startsWith('/') ? path : `/images/${path}`;
+    if (!path) return '/images/landing-coffee.jpg'; // Placeholder default
+    
+    // 1. Cek apakah link dari Cloudinary (http/https)
+    if (path.startsWith('http')) {
+        return path; 
+    }
+    
+    // 2. Cek apakah path lokal absolut
+    if (path.startsWith('/')) {
+        return path;
+    }
+
+    // 3. Sisanya dianggap file lokal di folder /images/
+    return `/images/${path}`;
   };
 
   return (
@@ -121,10 +134,7 @@ export default function CustomerMenuPage() {
         {/* BEST SELLER MENU (HORIZONTAL) */}
         <div className="px-6 mt-6">
            <div className="flex justify-between items-end mb-4">
-              {/* UBAH JUDUL JADI BEST SELLER */}
               <h3 className="text-lg font-bold text-[#2D3E50]">Best Seller</h3>
-              
-              {/* UBAH LINK KE HALAMAN SEARCH */}
               <Link href="/customer/search" className="text-[#FF4D4D] text-xs font-bold mb-1">See all</Link>
            </div>
 
@@ -133,16 +143,20 @@ export default function CustomerMenuPage() {
                  <div key={idx} className="relative min-w-[160px] bg-white rounded-2xl shadow-sm p-4 pt-12 flex-shrink-0 mt-8">
                     {/* Foto Bulat Keluar */}
                     <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-gray-50">
-                       <img src={getImageUrl(item.foto_url)} alt={item.nama_menu} className="w-full h-full object-cover" />
+                       <img 
+                        src={getImageUrl(item.foto_url)} 
+                        alt={item.nama_menu} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => e.target.src='/images/landing-coffee.jpg'} 
+                       />
                     </div>
                     
-                    {/* GANTI BUTTON LOVE JADI ADD TO CART (+) */}
                     <button 
                         onClick={() => addToCart(item)}
                         disabled={item.status_ketersediaan === 'habis'}
                         className="absolute top-2 right-2 bg-[#D32F2F] hover:bg-red-700 disabled:bg-gray-300 text-white p-1.5 rounded-full z-20 shadow-md active:scale-95 transition-all"
                     >
-                       <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4" />
                     </button>
 
                     <h4 className="font-bold text-[#2D3E50] text-sm mt-4 truncate text-center">{item.nama_menu}</h4>
@@ -199,13 +213,17 @@ export default function CustomerMenuPage() {
            ) : filteredMenus.map((item) => (
               <div key={item.id_menu} className="flex gap-4 relative">
                  <div className="w-20 h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 flex-shrink-0 bg-white">
-                    <img src={getImageUrl(item.foto_url)} alt={item.nama_menu} className="w-full h-full object-cover" />
+                    <img 
+                      src={getImageUrl(item.foto_url)} 
+                      alt={item.nama_menu} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => e.target.src='/images/landing-coffee.jpg'}
+                    />
                  </div>
 
                  <div className="flex-1 pt-1">
                     <div className="flex justify-between items-start">
                        <h4 className="font-bold text-[#2D3E50] text-base">{item.nama_menu}</h4>
-                       {/* Hapus love icon di sini juga jika tidak dipakai */}
                     </div>
                     
                     <p className="text-[#2D3E50] text-sm font-medium mt-0.5">{Number(item.harga).toLocaleString('id-ID')}</p>
