@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-// Kita pakai <img> biasa, jadi tidak perlu import Image dari next/image
 import { FiChevronLeft, FiEdit2, FiUpload } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 
@@ -22,21 +21,20 @@ export default function EditMenuPage() {
     deskripsi: '',
     harga: '',
     status_ketersediaan: 'ready',
-    current_foto_url: '', // Simpan url foto lama dari database
+    current_foto_url: '', 
   });
 
-  // State Gambar (Preview saat upload baru)
+  // State Gambar
   const [newImageFile, setNewImageFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
-  // 1. Fetch Data Menu Lama saat halaman dibuka
+  // 1. Fetch Data Menu Lama
   useEffect(() => {
     async function fetchMenu() {
       try {
         const res = await fetch(`/api/menu?id=${id}`); 
         const json = await res.json();
         
-        // Cek apakah data ada di dalam array atau object langsung
         const dataMenu = Array.isArray(json.data) ? json.data[0] : json.data;
 
         if (json.success && dataMenu) {
@@ -60,29 +58,27 @@ export default function EditMenuPage() {
       }
     }
     
-    if (id) {
-        fetchMenu();
-    }
+    if (id) fetchMenu();
   }, [id, router]);
 
-  // 2. Handle Perubahan Input Teks
+  // 2. Handle Change Input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 3. Handle Upload Gambar Baru (Preview)
+  // 3. Handle Gambar Baru
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setNewImageFile(file);
-      setPreviewImage(URL.createObjectURL(file)); // Buat preview lokal
+      setPreviewImage(URL.createObjectURL(file)); 
     }
   };
 
   const triggerFileInput = () => fileInputRef.current.click();
 
-  // 4. Handle Ganti Status (Tersedia / Habis)
+  // 4. Handle Status
   const toggleStatus = () => {
     setFormData(prev => ({
       ...prev,
@@ -90,32 +86,46 @@ export default function EditMenuPage() {
     }));
   };
 
-  // 5. Submit Data ke Server (Update)
+  // ==========================================
+  // 5. SUBMIT DATA (VERSI DEBUGGING / DETEKTIF)
+  // ==========================================
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
       const dataToSend = new FormData();
       
-      // Masukkan semua data teks ke FormData
       dataToSend.append('nama_menu', formData.nama_menu);
       dataToSend.append('kategori', formData.kategori);
       dataToSend.append('deskripsi', formData.deskripsi);
       dataToSend.append('harga', formData.harga);
       dataToSend.append('status_ketersediaan', formData.status_ketersediaan);
       
-      // Masukkan file gambar HANYA jika user upload gambar baru
       if (newImageFile) {
         dataToSend.append('foto', newImageFile);
       }
 
-      // Kirim ke API (Method PUT untuk update)
-      // Pastikan API kamu di route.js menangani method PUT
+      console.log("🚀 Sedang mengirim update ke ID:", id);
+
+      // Kirim Request
       const res = await fetch(`/api/admin/menu?id=${id}`, { 
-        method: 'PUT', // Atau 'POST' jika API kamu pakai POST untuk update
+        method: 'PUT', 
         body: dataToSend 
       });
       
-      const json = await res.json();
+      // --- DEBUGGING START: BACA SEBAGAI TEXT DULU ---
+      const textResponse = await res.text();
+      console.log("📩 Respon Asli Server:", textResponse); // <--- CEK CONSOLE (F12) DISINI
+
+      let json;
+      try {
+        json = JSON.parse(textResponse); // Coba ubah ke JSON
+      } catch (err) {
+        // Jika gagal, berarti server mengirim HTML (Error Page)
+        console.error("❌ Gagal parse JSON. Ini HTML Error:", textResponse);
+        // Tampilkan potongan error di layar supaya kelihatan
+        throw new Error(`Server Error (Bukan JSON): ${textResponse.substring(0, 150)}...`);
+      }
+      // --- DEBUGGING END ---
 
       if (json.success) {
         await Swal.fire({
@@ -124,13 +134,15 @@ export default function EditMenuPage() {
           text: 'Data menu berhasil diperbarui',
           confirmButtonColor: '#5C6BC0'
         });
-        router.push('/admin/menu'); // Kembali ke halaman list
-        router.refresh(); // Refresh agar data terbaru muncul
+        router.push('/admin/menu'); 
+        router.refresh(); 
       } else {
         throw new Error(json.error || json.message || 'Gagal update');
       }
+
     } catch (error) {
-      Swal.fire('Gagal', error.message || 'Terjadi kesalahan saat menyimpan', 'error');
+      // Tampilkan error di layar
+      Swal.fire('Gagal', error.message, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -138,15 +150,8 @@ export default function EditMenuPage() {
 
   if (isLoading) return <div className="p-10 text-center text-gray-500">Memuat data...</div>;
 
-  // --- LOGIKA CERDAS UNTUK GAMBAR ---
-  // Urutan Prioritas:
-  // 1. Preview Image (Jika user baru upload file)
-  // 2. Cloudinary URL (Jika data lama ada 'http')
-  // 3. Local Folder (Jika data lama cuma nama file)
-  // 4. Placeholder (Jika kosong/error)
-  
+  // Logic Gambar
   let imageSource = '/images/placeholder.jpg';
-  
   if (previewImage) {
     imageSource = previewImage;
   } else if (formData.current_foto_url) {
@@ -182,7 +187,6 @@ export default function EditMenuPage() {
                className="relative w-full aspect-square bg-white rounded-xl shadow-[0_5px_20px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-100 group cursor-pointer"
                onClick={triggerFileInput}
              >
-                {/* Menggunakan <img> biasa agar support link luar (Cloudinary) tanpa config */}
                 <img 
                   src={imageSource}
                   alt="Menu Preview"
@@ -190,7 +194,6 @@ export default function EditMenuPage() {
                   onError={(e) => { e.target.onerror = null; e.target.src = '/images/placeholder.jpg'; }}
                 />
                 
-                {/* Efek Hover */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
                     <FiUpload className="text-gray-700 text-3xl" />
                 </div>
@@ -284,7 +287,6 @@ export default function EditMenuPage() {
 
         {/* --- TOMBOL NAVIGASI BAWAH --- */}
         <div className="flex justify-center gap-6 mt-10">
-            {/* Tombol Kembali */}
             <button 
                 onClick={() => router.back()}
                 className="bg-[#FF5252] hover:bg-red-600 text-white font-bold py-3 px-10 rounded-lg shadow-md flex items-center gap-2 transition-transform active:scale-95"
@@ -292,7 +294,6 @@ export default function EditMenuPage() {
                 <FiChevronLeft size={20} /> Kembali
             </button>
 
-            {/* Tombol Simpan */}
             <button 
                 onClick={handleSubmit}
                 disabled={isSaving}
