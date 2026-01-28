@@ -75,6 +75,7 @@ export async function POST(request) {
     const kategori = formData.get('kategori');
     const deskripsi = formData.get('deskripsi') || '';
     const harga = parseFloat(formData.get('harga'));
+    
     const status_input = formData.get('status_ketersediaan');
     const status_ketersediaan = (status_input === 'on' || status_input === 'ready') ? 'ready' : 'habis';
     
@@ -97,7 +98,7 @@ export async function POST(request) {
   }
 }
 
-// --- PUT: Update Menu (INI YANG SEBELUMNYA HILANG) ---
+// --- PUT: Update Menu (VERSI ROBUST / ANTI-CRASH) ---
 export async function PUT(request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -110,13 +111,15 @@ export async function PUT(request) {
   try {
     const formData = await request.formData();
 
-    // 1. Ambil Data Teks
+    // 1. Ambil Data Teks & Validasi Harga
     const nama_menu = formData.get('nama_menu');
     const kategori = formData.get('kategori');
     const deskripsi = formData.get('deskripsi') || '';
-    const harga = parseFloat(formData.get('harga'));
     
-    // Status (convert 'on'/'ready' jadi 'ready')
+    // Pastikan harga adalah angka, kalau error jadi 0 (biar gak crash)
+    let harga = parseFloat(formData.get('harga'));
+    if (isNaN(harga)) harga = 0;
+    
     const status_input = formData.get('status_ketersediaan');
     const status_ketersediaan = (status_input === 'on' || status_input === 'ready') ? 'ready' : 'habis';
 
@@ -124,7 +127,9 @@ export async function PUT(request) {
     const file = formData.get('foto');
     let newFotoUrl = null;
 
-    if (file && typeof file !== 'string') {
+    // Upload hanya jika file valid dan punya ukuran
+    if (file && typeof file !== 'string' && file.size > 0) {
+        console.log("Mencoba upload foto update...");
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
@@ -133,8 +138,12 @@ export async function PUT(request) {
             const uploadStream = cloudinary.uploader.upload_stream(
                 { folder: 'combie-coffee-menu' },
                 (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
+                    if (error) {
+                        console.error("Cloudinary Error:", error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
                 }
             );
             uploadStream.end(buffer);
@@ -164,7 +173,8 @@ export async function PUT(request) {
     });
 
   } catch (error) {
-    console.error('Error updating menu:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    // Log Error Lengkap ke Vercel Logs
+    console.error('SERVER ERROR SAAT PUT:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
