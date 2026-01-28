@@ -1,39 +1,163 @@
 import { query } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { v2 as cloudinary } from 'cloudinary';
 
-export const dynamic = 'force-dynamic';
+// Konfigurasi Cloudinary (Pakai Env Vars kamu yang sudah benar)
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// GET: Ambil Semua Data Admin
-export async function GET() {
+// --- GET ---
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
   try {
-    const data = await query("SELECT * FROM admin ORDER BY id_admin ASC");
-    return NextResponse.json({ success: true, data });
+    let queryStr = "SELECT * FROM menu WHERE is_active = 1";
+    const params = [];
+    if (id) {
+      queryStr += " AND id_menu = ?";
+      params.push(id);
+    }
+    queryStr += " ORDER BY id_menu DESC";
+    const rows = await query(queryStr, params);
+    return NextResponse.json({ success: true, data: id ? (rows[0] || null) : rows });
   } catch (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// POST: Tambah Admin Baru
+// --- DELETE ---
+export async function DELETE(request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
+  try {
+    await query('UPDATE menu SET is_active = 0 WHERE id_menu = ?', [id]);
+    return NextResponse.json({ success: true, message: 'Menu dihapus' });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// --- POST ---
 export async function POST(request) {
   try {
-    const { email, password, role } = await request.json();
+    const formData = await request.formData();
+    const file = formData.get('foto'); 
+    let fotoUrl = ''; 
+    
+    if (file && typeof file !== 'string') {
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const uploadResult = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'combie-coffee-menu' },
+          (error, result) => { if (error) reject(error); else resolve(result); }
+        );
+        uploadStream.end(buffer);
+      });
+      fotoUrl = uploadResult.secure_url;
+    }
+    
+    const nama_menu = formData.get('nama_menu');
+    const kategori = formData.get('kategori');
+    const deskripsi = formData.get('deskripsi') || '';
+    const harga = parseFloat(formData.get('harga'));
+    const status_input = formData.get('status_ketersediaan');
+    const status_ketersediaan = (status_input === 'on' || status_input === 'ready') ? 'ready' : 'habis';
+    
+    const insertResult = await query(
+      `INSERT INTO menu (nama_menu, kategori, deskripsi, harga, status_ketersediaan, foto_url, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
+      [nama_menu, kategori, deskripsi, harga, status_ketersediaan, fotoUrl]
+    );
+    return NextResponse.json({ success: true, message: 'Menu berhasil ditambahkan', data: { id: insertResult.insertId, foto_url: fotoUrl } });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
 
-    // Validasi sederhana
-    if (!email || !password || !role) {
-      return NextResponse.json({ success: false, message: "Data tidak lengkap!" }, { status: 400 });
+// --- PUT (YANG KITA DEBUG) ---
+export async function PUT(request) {
+  // KITA BUNGKUS DENGAN TRY-CATCH PENUH SUPAYA TIDAK 500
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ success: false, error: 'ID is missing in URL' }, { status: 200 }); // Status 200 biar kebaca frontend
+
+    const formData = await request.formData();
+    
+    // Log data yang masuk (Lihat di Vercel Logs nanti kalau masih gagal)
+    console.log("DEBUG PUT: ID=", id);
+
+    const nama_menu = formData.get('nama_menu');
+    const kategori = formData.get('kategori');
+    const deskripsi = formData.get('deskripsi') || '';
+    
+    // Handle Harga
+    let harga = formData.get('harga');
+    if (!harga || isNaN(parseFloat(harga))) {
+       harga = 0;
+    } else {
+       harga = parseFloat(harga);
     }
 
-    // Insert ke DB
-    // Note: Nama diambil dari bagian depan email (misal: admin@gmail -> admin)
-    const nama = email.split('@')[0];
-    
-    await query(
-      "INSERT INTO admin (nama, username, password_hash, role, status) VALUES (?, ?, ?, ?, 'aktif')",
-      [nama, email, password, role]
-    );
+    const status_input = formData.get('status_ketersediaan');
+    const status_ketersediaan = (status_input === 'on' || status_input === 'ready') ? 'ready' : 'habis';
 
-    return NextResponse.json({ success: true, message: "Data berhasil disimpan" });
+    const file = formData.get('foto');
+    let newFotoUrl = null;
+
+    // Cek Upload
+    if (file && typeof file !== 'string' && file.size > 0) {
+        console.log("DEBUG PUT: Processing Image Upload...");
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+
+        const uploadResult = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: 'combie-coffee-menu' },
+                (error, result) => {
+                    if (error) {
+                        console.error("Cloudinary Error:", error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+            uploadStream.end(buffer);
+        });
+        newFotoUrl = uploadResult.secure_url;
+    }
+
+    // Database Update
+    let result;
+    if (newFotoUrl) {
+        result = await query(
+            `UPDATE menu SET nama_menu=?, kategori=?, deskripsi=?, harga=?, status_ketersediaan=?, foto_url=? WHERE id_menu=?`,
+            [nama_menu, kategori, deskripsi, harga, status_ketersediaan, newFotoUrl, id]
+        );
+    } else {
+        result = await query(
+            `UPDATE menu SET nama_menu=?, kategori=?, deskripsi=?, harga=?, status_ketersediaan=? WHERE id_menu=?`,
+            [nama_menu, kategori, deskripsi, harga, status_ketersediaan, id]
+        );
+    }
+
+    return NextResponse.json({ success: true, message: 'Menu berhasil diupdate' });
+
   } catch (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    // INI KUNCINYA: Jangan return 500. Return 200 tapi kasih pesan errornya.
+    // Supaya frontend "No number after minus sign" hilang dan diganti pesan asli.
+    console.error("DEBUG CRITICAL ERROR:", error);
+    return NextResponse.json({ 
+        success: false, 
+        error: "SERVER ERROR: " + error.message,
+        stack: error.stack 
+    }, { status: 200 }); 
   }
 }
