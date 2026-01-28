@@ -84,7 +84,7 @@ export default function AddMenuPage() {
         formDataToSend.append('foto', fileInputRef.current.files[0]);
       }
 
-      const response = await fetch('/api/menu', {
+      const response = await fetch('/api/admin/menu', {
         method: 'POST',
         body: formDataToSend,
       });
