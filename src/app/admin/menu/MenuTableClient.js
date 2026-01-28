@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Edit, Trash2 } from 'lucide-react'; // Hapus 'Eye' dari import
+import Link from "next/link"; // Image tidak perlu di-import lagi karena kita pakai tag <img> biasa
+import { Edit, Trash2 } from 'lucide-react';
 
 const kategoriMap = {
   coffee: "Coffee",
@@ -88,19 +87,24 @@ export default function MenuTableClient({ searchTerm }) {
                 {/* NO */}
                 <td className="px-4 py-4 text-sm font-bold text-[#8B4545] border-r border-[#E0CACA]">{idx + 1}</td>
                 
-                {/* GAMBAR */}
+                {/* GAMBAR (BAGIAN INI YANG DIPERBARUI) */}
                 <td className="px-4 py-4 border-r border-[#E0CACA]">
                   <div className="flex justify-center">
                     <div className="h-12 w-16 overflow-hidden rounded bg-white border border-gray-200">
-                        <Image
-                        src={menu.foto_url ? (menu.foto_url.startsWith('/') ? menu.foto_url : `/images/${menu.foto_url}`) : '/images/placeholder.jpg'}
+                      <img
+                        src={
+                          menu.foto_url && menu.foto_url.startsWith('http')
+                            ? menu.foto_url // 1. Link Cloudinary (Internet)
+                            : `/images/${menu.foto_url}` // 2. Link Local (Folder Laptop)
+                        }
                         alt={menu.nama_menu}
-                        width={64}
-                        height={48}
                         className="h-full w-full object-cover"
-                        unoptimized
-                        onError={(e) => { e.target.src = '/images/placeholder.jpg'; }}
-                        />
+                        // Jika gambar error/tidak ketemu, ganti ke placeholder default
+                        onError={(e) => { 
+                            e.target.onerror = null; 
+                            e.target.src = '/images/placeholder.jpg'; 
+                        }}
+                      />
                     </div>
                   </div>
                 </td>
@@ -133,7 +137,7 @@ export default function MenuTableClient({ searchTerm }) {
                    )}
                 </td>
                 
-                {/* AKSI (Hapus, Edit) - Icon Eye Dihapus */}
+                {/* AKSI */}
                 <td className="px-4 py-4">
                   <div className="flex justify-center items-center gap-2">
                     

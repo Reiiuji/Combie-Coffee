@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Image from 'next/image';
+// Hapus import Image dari next/image biar gak error domain
 import { FiChevronLeft, FiEdit2, FiUpload } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 
@@ -15,34 +15,39 @@ export default function EditMenuPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  // State Data
+  // State Data Form
   const [formData, setFormData] = useState({
     nama_menu: '',
     kategori: 'coffee',
     deskripsi: '',
     harga: '',
     status_ketersediaan: 'ready',
-    current_foto_url: '',
+    current_foto_url: '', // Untuk menyimpan link gambar lama dari DB
   });
 
-  // State Gambar
+  // State Gambar (Preview saat upload baru)
   const [newImageFile, setNewImageFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
-  // 1. Fetch Data
+  // 1. Fetch Data Menu Lama
   useEffect(() => {
     async function fetchMenu() {
       try {
-        const res = await fetch(`/api/menu/${id}`);
+        const res = await fetch(`/api/menu?id=${id}`); // Sesuaikan query API get by ID
         const json = await res.json();
-        if (json.success) {
+        
+        // Cek apakah response berupa array (list) atau object langsung
+        // Biasanya API get by ID mengembalikan object tunggal atau array isi 1
+        const dataMenu = Array.isArray(json.data) ? json.data[0] : json.data;
+
+        if (json.success && dataMenu) {
           setFormData({
-            nama_menu: json.data.nama_menu,
-            kategori: json.data.kategori,
-            deskripsi: json.data.deskripsi || '',
-            harga: json.data.harga,
-            status_ketersediaan: json.data.status_ketersediaan,
-            current_foto_url: json.data.foto_url
+            nama_menu: dataMenu.nama_menu,
+            kategori: dataMenu.kategori,
+            deskripsi: dataMenu.deskripsi || '',
+            harga: dataMenu.harga,
+            status_ketersediaan: dataMenu.status_ketersediaan,
+            current_foto_url: dataMenu.foto_url
           });
         } else {
           Swal.fire('Error', 'Menu tidak ditemukan', 'error');
@@ -57,24 +62,24 @@ export default function EditMenuPage() {
     if (id) fetchMenu();
   }, [id, router]);
 
-  // 2. Handle Change Input
+  // 2. Handle Change Input Teks
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // 3. Handle Gambar Baru
+  // 3. Handle Gambar Baru (Preview)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setNewImageFile(file);
-      setPreviewImage(URL.createObjectURL(file));
+      setPreviewImage(URL.createObjectURL(file)); // Buat URL lokal sementara buat preview
     }
   };
 
   const triggerFileInput = () => fileInputRef.current.click();
 
-  // 4. Handle Toggle Status (Klik Tombol Hijau)
+  // 4. Handle Toggle Status (Tersedia / Habis)
   const toggleStatus = () => {
     setFormData(prev => ({
       ...prev,
@@ -82,20 +87,31 @@ export default function EditMenuPage() {
     }));
   };
 
-  // 5. Submit Update
+  // 5. Submit Update ke Server
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
       const dataToSend = new FormData();
-      // Append semua data
-      Object.keys(formData).forEach(key => {
-         dataToSend.append(key, formData[key]);
-      });
+      
+      // Masukkan data teks
+      dataToSend.append('nama_menu', formData.nama_menu);
+      dataToSend.append('kategori', formData.kategori);
+      dataToSend.append('deskripsi', formData.deskripsi);
+      dataToSend.append('harga', formData.harga);
+      dataToSend.append('status_ketersediaan', formData.status_ketersediaan);
+      
+      // Masukkan gambar HANYA jika user upload gambar baru
       if (newImageFile) {
         dataToSend.append('foto', newImageFile);
       }
 
-      const res = await fetch(`/api/menu/${id}`, { method: 'PUT', body: dataToSend });
+      // Kirim Request PUT (Pastikan API kamu support method PUT/PATCH untuk edit)
+      // Kalau API kamu pakai POST untuk edit, ganti method jadi 'POST'
+      const res = await fetch(`/api/admin/menu?id=${id}`, { // Sesuaikan route API edit kamu
+        method: 'PUT', 
+        body: dataToSend 
+      });
+      
       const json = await res.json();
 
       if (json.success) {
@@ -108,7 +124,7 @@ export default function EditMenuPage() {
         router.push('/admin/menu');
         router.refresh();
       } else {
-        throw new Error(json.message);
+        throw new Error(json.error || json.message || 'Gagal update');
       }
     } catch (error) {
       Swal.fire('Gagal', error.message || 'Terjadi kesalahan', 'error');
@@ -119,10 +135,23 @@ export default function EditMenuPage() {
 
   if (isLoading) return <div className="p-10 text-center text-gray-500">Memuat data...</div>;
 
-  // Gambar yang akan ditampilkan
-  const displayImage = previewImage 
-    ? previewImage 
-    : (formData.current_foto_url ? (formData.current_foto_url.startsWith('/') ? formData.current_foto_url : `/images/${formData.current_foto_url}`) : '/images/placeholder.jpg');
+  // --- LOGIC TAMPILAN GAMBAR (PINTAR) ---
+  // Prioritas 1: Gambar Preview (Kalau user baru pilih file)
+  // Prioritas 2: Gambar Cloudinary (Kalau link ada http-nya)
+  // Prioritas 3: Gambar Lokal (Kalau cuma nama file)
+  // Prioritas 4: Placeholder (Kalau kosong)
+  
+  let imageSource = '/images/placeholder.jpg';
+  
+  if (previewImage) {
+    imageSource = previewImage;
+  } else if (formData.current_foto_url) {
+    if (formData.current_foto_url.startsWith('http')) {
+      imageSource = formData.current_foto_url;
+    } else {
+      imageSource = `/images/${formData.current_foto_url}`;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] font-sans pb-10">
@@ -135,12 +164,12 @@ export default function EditMenuPage() {
 
       <div className="max-w-6xl mx-auto px-6">
         
-        {/* JUDUL HALAMAN (Putih dengan border atas biru tipis di gambar referensi, tapi saya buat rapi standar) */}
+        {/* JUDUL HALAMAN */}
         <div className="bg-white px-6 py-4 rounded-t-lg shadow-sm border-b border-gray-100 mb-6">
-           <h1 className="text-xl font-bold text-gray-800">Detail Menu</h1>
+           <h1 className="text-xl font-bold text-gray-800">Edit Menu</h1>
         </div>
 
-        {/* CONTAINER UTAMA (KOTAK PUTIH BESAR) */}
+        {/* CONTAINER UTAMA */}
         <div className="bg-white rounded-xl shadow-md p-8 flex flex-col lg:flex-row gap-10 border border-gray-200">
           
           {/* --- KOLOM KIRI: GAMBAR --- */}
@@ -149,24 +178,24 @@ export default function EditMenuPage() {
                className="relative w-full aspect-square bg-white rounded-xl shadow-[0_5px_20px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-100 group cursor-pointer"
                onClick={triggerFileInput}
              >
-                <Image 
-                  src={displayImage}
+                {/* Ganti <Image> Next.js dengan <img> biasa agar support Cloudinary tanpa ribet */}
+                <img 
+                  src={imageSource}
                   alt="Menu Preview"
-                  fill
-                  className="object-contain p-4 group-hover:opacity-80 transition-opacity"
-                  unoptimized
-                  onError={(e) => { e.target.src = '/images/placeholder.jpg' }}
+                  className="w-full h-full object-contain p-4 group-hover:opacity-80 transition-opacity"
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/images/placeholder.jpg'; }}
                 />
+                
                 {/* Overlay Hover Upload */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <FiUpload className="text-gray-600 text-3xl" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                    <FiUpload className="text-gray-700 text-3xl" />
                 </div>
              </div>
              <p className="text-xs text-gray-400 mt-3 text-center">Klik gambar untuk mengganti foto</p>
              <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
           </div>
 
-          {/* --- KOLOM KANAN: FORM DATA (Tampilan List) --- */}
+          {/* --- KOLOM KANAN: FORM DATA --- */}
           <div className="lg:w-2/3 space-y-6">
             
             {/* Field Nama Menu */}
@@ -187,18 +216,19 @@ export default function EditMenuPage() {
             <div className="grid grid-cols-3 items-center border-b border-gray-200 pb-2">
                 <label className="text-sm font-bold text-gray-700">Jenis Menu</label>
                 <div className="col-span-2">
-                     <select 
+                      <select 
                         name="kategori"
                         value={formData.kategori}
                         onChange={handleChange}
                         className="w-full text-gray-800 font-medium bg-transparent outline-none focus:bg-gray-50 px-2 py-1 rounded appearance-none"
-                     >
-                        <option value="coffee">Coffee</option>
-                        <option value="tea">Tea</option>
-                        <option value="noncoffee">Non Coffee</option>
-                        <option value="food">Makanan</option>
-                        <option value="snack">Snack</option>
-                     </select>
+                      >
+                         <option value="coffee">Coffee</option>
+                         <option value="tea">Tea</option>
+                         <option value="noncoffee">Non Coffee</option>
+                         <option value="food">Makanan</option>
+                         <option value="snack">Snack</option>
+                         <option value="other">Lainnya</option>
+                      </select>
                 </div>
             </div>
 
@@ -230,14 +260,6 @@ export default function EditMenuPage() {
                 </div>
             </div>
 
-            {/* Field Tambah Shot (Dummy karena DB belum ada kolom ini, bisa diabaikan atau disatukan ke deskripsi) */}
-            {/* <div className="grid grid-cols-3 items-center border-b border-gray-200 pb-2">
-                <label className="text-sm font-bold text-gray-700">Tambah Shot</label>
-                <div className="col-span-2">
-                    <span className="text-gray-800 font-bold px-2">Rp 10.000 (Opsional)</span>
-                </div>
-            </div> */}
-
             {/* Field Ketersediaan */}
             <div className="grid grid-cols-3 items-center pt-2">
                 <label className="text-sm font-bold text-gray-700">Ketersediaan</label>
@@ -258,7 +280,6 @@ export default function EditMenuPage() {
 
         {/* --- TOMBOL AKSI BAWAH --- */}
         <div className="flex justify-center gap-6 mt-10">
-            {/* Tombol Kembali (Merah) */}
             <button 
                 onClick={() => router.back()}
                 className="bg-[#FF5252] hover:bg-red-600 text-white font-bold py-3 px-10 rounded-lg shadow-md flex items-center gap-2 transition-transform active:scale-95"
@@ -266,7 +287,6 @@ export default function EditMenuPage() {
                 <FiChevronLeft size={20} /> Kembali
             </button>
 
-            {/* Tombol Update (Biru Ungu) */}
             <button 
                 onClick={handleSubmit}
                 disabled={isSaving}
