@@ -3,15 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, RefreshCw } from 'lucide-react'; // Import Icon
+import { Save, RefreshCw } from 'lucide-react';
 
 export default function EditRolePage() {
   const router = useRouter();
-  const params = useParams(); // Hook untuk ambil parameter URL
-  const { id } = params;      // Ambil 'id' dari URL (misal: 1)
+  const params = useParams();
+  const { id } = params;
 
+  // 1. Ganti 'email' jadi 'username'
   const [formData, setFormData] = useState({
-    email: '',
+    username: '', 
     password: '',
     role: 'admin'
   });
@@ -22,19 +23,16 @@ export default function EditRolePage() {
   useEffect(() => {
     async function fetchUser() {
       try {
-        // Ambil semua admin, lalu cari yang ID-nya cocok (Cara simpel)
-        // Idealnya buat API khusus GET /api/admin/[id]
         const res = await fetch('/api/admin'); 
         const json = await res.json();
         
         if (json.success) {
-          // Cari user yang ID-nya sama dengan parameter URL
           const user = json.data.find(u => u.id_admin == id);
           
           if (user) {
             setFormData({
-                email: user.username,
-                password: user.password_hash, 
+                username: user.username, // 2. Ambil username dari DB
+                password: '', // Biarkan kosong, hanya diisi jika ingin ganti password
                 role: user.role
             });
           } else {
@@ -65,7 +63,7 @@ export default function EditRolePage() {
     setLoading(true);
 
     try {
-      // Panggil API PUT untuk update
+      // 3. Kirim data update (username, password baru, role)
       const res = await fetch(`/api/admin/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -116,19 +114,25 @@ export default function EditRolePage() {
               {/* KOLOM KIRI */}
               <div className="flex-1 space-y-5">
                  <div>
-                    <label className="block text-gray-400 font-bold mb-2 text-sm">Email</label>
+                    {/* 4. Update Label & Input jadi Username */}
+                    <label className="block text-gray-400 font-bold mb-2 text-sm">Username / ID</label>
                     <input 
-                      type="email" name="email" required
-                      value={formData.email} onChange={handleChange}
+                      type="text" 
+                      name="username" 
+                      required
+                      value={formData.username} 
+                      onChange={handleChange}
                       className="w-full bg-gray-50 border border-gray-200 p-3 rounded text-gray-700 outline-none focus:ring-2 focus:ring-[#A04040]"
                     />
                  </div>
                  <div>
-                    <label className="block text-gray-400 font-bold mb-2 text-sm">Password</label>
+                    <label className="block text-gray-400 font-bold mb-2 text-sm">Password Baru</label>
                     <input 
-                      type="text" name="password"
-                      value={formData.password} onChange={handleChange}
-                      placeholder="Biarkan kosong jika tidak ingin mengubah"
+                      type="text" 
+                      name="password"
+                      value={formData.password} 
+                      onChange={handleChange}
+                      placeholder="Biarkan kosong jika tidak ingin mengubah password"
                       className="w-full bg-gray-50 border border-gray-200 p-3 rounded text-gray-700 outline-none focus:ring-2 focus:ring-[#A04040]"
                     />
                  </div>
@@ -163,10 +167,9 @@ export default function EditRolePage() {
                        {loading ? 'Menyimpan...' : <><Save size={16} /> Simpan Perubahan</>}
                     </button>
                     
-                    {/* Tombol Reset (Opsional) */}
                      <button 
                       type="button" 
-                      onClick={() => window.location.reload()} // Reset ulang halaman
+                      onClick={() => window.location.reload()} 
                       className="bg-[#F55D4A] hover:bg-red-500 text-white px-8 py-2.5 rounded shadow-sm font-bold text-sm transition flex items-center gap-2"
                     >
                        <RefreshCw size={16} /> Reset
