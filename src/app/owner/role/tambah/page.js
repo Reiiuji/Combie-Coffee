@@ -6,11 +6,13 @@ import Link from 'next/link';
 
 export default function TambahRolePage() {
   const router = useRouter();
+  
+  // Ganti 'email' jadi 'username'
   const [formData, setFormData] = useState({
-    email: '',
+    username: '', 
     password: '',
     confirmPassword: '',
-    role: 'admin' // Default
+    role: 'admin'
   });
   const [loading, setLoading] = useState(false);
 
@@ -31,19 +33,24 @@ export default function TambahRolePage() {
     setLoading(true);
 
     try {
+      // Kirim data ke API (sekarang isinya username, bukan email)
       const res = await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+      
+      const data = await res.json(); // Ambil respon JSON biar bisa baca pesan error
+
       if (res.ok) {
         alert("Berhasil menambahkan data!");
         router.push('/owner/role');
       } else {
-        alert("Gagal menyimpan data.");
+        alert(data.message || "Gagal menyimpan data.");
       }
     } catch (err) {
       console.error(err);
+      alert("Terjadi kesalahan koneksi.");
     } finally {
       setLoading(false);
     }
@@ -59,7 +66,7 @@ export default function TambahRolePage() {
       <div className="p-8">
         {/* JUDUL */}
         <div className="bg-white p-4 rounded-md shadow-sm mb-6 border-l-4 border-[#A04040]">
-            <h1 className="text-xl font-bold text-gray-800">Role</h1>
+            <h1 className="text-xl font-bold text-gray-800">Tambah Role Baru</h1>
         </div>
 
         {/* TOMBOL KEMBALI */}
@@ -74,10 +81,14 @@ export default function TambahRolePage() {
               {/* KOLOM KIRI: INPUT */}
               <div className="flex-1 space-y-5">
                  <div>
-                    <label className="block text-gray-400 font-bold mb-2 text-sm">Email</label>
+                    {/* GANTI LABEL & NAME JADI USERNAME */}
+                    <label className="block text-gray-400 font-bold mb-2 text-sm">Username / ID</label>
                     <input 
-                      type="email" name="email" required
-                      value={formData.email} onChange={handleChange}
+                      type="text" // Ganti type jadi text
+                      name="username" // Ganti name
+                      required
+                      placeholder="Contoh: admin01"
+                      value={formData.username} onChange={handleChange}
                       className="w-full bg-gray-50 border border-gray-200 p-3 rounded text-gray-700 outline-none focus:ring-2 focus:ring-[#A04040]"
                     />
                  </div>
@@ -129,7 +140,7 @@ export default function TambahRolePage() {
                     </button>
                     <button 
                       type="button" 
-                      onClick={() => setFormData({ email: '', password: '', confirmPassword: '', role: 'admin' })}
+                      onClick={() => setFormData({ username: '', password: '', confirmPassword: '', role: 'admin' })}
                       className="bg-[#F55D4A] hover:bg-red-500 text-white px-8 py-2.5 rounded shadow-sm font-bold text-sm transition"
                     >
                        Reset
