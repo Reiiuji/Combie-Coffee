@@ -16,20 +16,21 @@ export async function GET() {
 // POST: Tambah Admin Baru
 export async function POST(request) {
   try {
-    const { email, password, role } = await request.json();
+    // 1. Terima 'username' bukan 'email'
+    const { username, password, role } = await request.json();
 
-    // Validasi sederhana
-    if (!email || !password || !role) {
+    // 2. Validasi
+    if (!username || !password || !role) {
       return NextResponse.json({ success: false, message: "Data tidak lengkap!" }, { status: 400 });
     }
 
-    // Insert ke DB
-    // Note: Nama diambil dari bagian depan email (misal: admin@gmail -> admin)
-    const nama = email.split('@')[0];
+    // 3. Insert ke DB
+    // Kita isi kolom 'nama' dengan 'username' juga (sebagai display name default)
+    const nama = username;
     
     await query(
       "INSERT INTO admin (nama, username, password_hash, role, status) VALUES (?, ?, ?, ?, 'aktif')",
-      [nama, email, password, role]
+      [nama, username, password, role]
     );
 
     return NextResponse.json({ success: true, message: "Data berhasil disimpan" });
