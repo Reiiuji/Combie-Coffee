@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useCart } from '@/context/CartContext'; 
 import { 
   Home, ShoppingBag, Search, Menu, Plus, 
-  Star
+  Star, Heart, Minus, Edit2
 } from 'lucide-react'; 
 
 export default function CustomerMenuPage() {
@@ -14,7 +14,7 @@ export default function CustomerMenuPage() {
   const [activeCategory, setActiveCategory] = useState('Coffee');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
    
-  const { addToCart, totalQty } = useCart();
+  const { addToCart, cart, updateCartItem, totalQty } = useCart();
 
   useEffect(() => {
     async function fetchMenus() {
@@ -40,26 +40,18 @@ export default function CustomerMenuPage() {
     return false;
   });
 
-  // Ambil 5 menu teratas
+  // Ambil 5 menu teratas untuk Best Seller
   const bestSellerMenus = menus.slice(0, 5); 
 
-  // --- FUNGSI INI YANG DIPERBAIKI ---
+  // --- FUNGSI HELPER GAMBAR (UPDATED) ---
   const getImageUrl = (path) => {
-    if (!path) return '/images/landing-coffee.jpg'; // Placeholder default
-    
-    // 1. Cek apakah link dari Cloudinary (http/https)
-    if (path.startsWith('http')) {
-        return path; 
-    }
-    
-    // 2. Cek apakah path lokal absolut
-    if (path.startsWith('/')) {
-        return path;
-    }
-
-    // 3. Sisanya dianggap file lokal di folder /images/
-    return `/images/${path}`;
+    if (!path) return '/images/landing-coffee.jpg'; 
+    if (path.startsWith('http')) return path; // Cloudinary
+    if (path.startsWith('/')) return path;    // Path Lokal Absolut
+    return `/images/${path}`;                 // Path Lokal Relatif
   };
+
+  const getCartItem = (id) => cart.find((item) => item.id_menu === id);
 
   return (
     <div className="min-h-screen bg-white font-sans relative overflow-x-hidden text-[#4A4A4A]">
@@ -160,7 +152,9 @@ export default function CustomerMenuPage() {
                     </button>
 
                     <h4 className="font-bold text-[#2D3E50] text-sm mt-4 truncate text-center">{item.nama_menu}</h4>
-                    <p className="text-[10px] text-gray-400 text-center mb-3 truncate">Creamy, smooth</p>
+                    <p className="text-[10px] text-gray-400 text-center mb-3 truncate">
+                        {item.deskripsi || "Creamy, smooth"}
+                    </p>
                     
                     <div className="flex justify-between items-center">
                        <span className="font-bold text-[#2D3E50] text-sm">{Number(item.harga).toLocaleString('id-ID')}</span>
@@ -183,7 +177,7 @@ export default function CustomerMenuPage() {
       </div>
 
 
-      {/* ================= BAGIAN BAWAH (BACKGROUND PUTIH) ================= */}
+      {/* ================= BAGIAN BAWAH (LIST MENU DENGAN DESKRIPSI) ================= */}
       <div className="bg-white pt-2 pb-24">
         
         {/* TABS KATEGORI */}
@@ -207,12 +201,16 @@ export default function CustomerMenuPage() {
         </div>
 
         {/* LIST MENU VERTIKAL */}
-        <div className="px-6 mt-6 space-y-8">
+        <div className="px-6 mt-6 space-y-6">
            {loading ? (
               <p className="text-center text-gray-400 mt-10">Memuat menu...</p>
-           ) : filteredMenus.map((item) => (
-              <div key={item.id_menu} className="flex gap-4 relative">
-                 <div className="w-20 h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 flex-shrink-0 bg-white">
+           ) : filteredMenus.map((item) => {
+              const inCart = getCartItem(item.id_menu);
+              
+              return (
+              <div key={item.id_menu} className="flex bg-white p-4 rounded-2xl shadow-sm border border-gray-50 items-center gap-4 relative">
+                 {/* Gambar */}
+                 <div className="w-20 h-20 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-50">
                     <img 
                       src={getImageUrl(item.foto_url)} 
                       alt={item.nama_menu} 
@@ -221,36 +219,79 @@ export default function CustomerMenuPage() {
                     />
                  </div>
 
-                 <div className="flex-1 pt-1">
-                    <div className="flex justify-between items-start">
-                       <h4 className="font-bold text-[#2D3E50] text-base">{item.nama_menu}</h4>
-                    </div>
-                    
-                    <p className="text-[#2D3E50] text-sm font-medium mt-0.5">{Number(item.harga).toLocaleString('id-ID')}</p>
-                    <p className="text-[11px] text-gray-400 mt-1 truncate">Strong, bold, aromatic</p>
-                    
-                    <div className="flex justify-between items-center mt-2">
-                       {/* Badge Stok */}
-                       {item.status_ketersediaan === 'habis' ? (
-                          <span className="bg-gray-200 text-gray-500 text-[9px] px-2 py-0.5 rounded-sm font-bold">Habis</span>
-                       ) : (
-                          <span className="bg-green-500 text-white text-[9px] px-2 py-0.5 rounded-sm font-bold">Tersedia</span>
-                       )}
+                 {/* Detail & Deskripsi */}
+                 <div className="flex-1">
+                    <h4 className="font-bold text-gray-800 text-lg">{item.nama_menu}</h4>
+                    <h5 className="font-bold text-gray-600 text-sm mt-0.5">
+                       {Number(item.harga).toLocaleString('id-ID')}
+                    </h5>
+                    {/* DESKRIPSI SUDAH DITAMPILKAN SEKARANG */}
+                    <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                       {item.deskripsi || "Nikmati kesegaran Combi Coffee"}
+                    </p>
+                 </div>
 
-                       {/* Tombol Add Merah */}
+                 {/* Kontrol Kanan (Love & Add/QTY) */}
+                 <div className="flex flex-col items-end gap-3">
+                    <button>
+                       <Heart className="w-5 h-5 text-gray-300 hover:text-red-500 hover:fill-red-500 transition-colors" />
+                    </button>
+
+                    {item.status_ketersediaan === 'habis' ? (
+                       <span className="text-[10px] font-bold text-gray-400 uppercase">Habis</span>
+                    ) : inCart ? (
+                       /* QTY Control */
+                       <div className="flex flex-col items-end gap-2">
+                          <button className="text-red-500">
+                             <Edit2 className="w-4 h-4" />
+                          </button>
+                          <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                             <button onClick={() => updateCartItem(item.id_menu, "minus")} className="px-2 py-1 hover:bg-gray-200 text-gray-600">
+                                <Minus className="w-3 h-3" />
+                             </button>
+                             <span className="px-3 text-sm font-bold text-gray-800">{inCart.qty}</span>
+                             <button onClick={() => updateCartItem(item.id_menu, "plus")} className="px-2 py-1 bg-red-600 text-white">
+                                <Plus className="w-3 h-3" />
+                             </button>
+                          </div>
+                       </div>
+                    ) : (
+                       /* Tombol Add */
                        <button 
                           onClick={() => addToCart(item)}
-                          disabled={item.status_ketersediaan === 'habis'}
-                          className="bg-[#D32F2F] hover:bg-red-700 text-white flex items-center gap-1 px-4 py-1.5 rounded-md text-[10px] font-bold shadow-sm transition-transform active:scale-95 disabled:opacity-50"
+                          className="bg-red-600 text-white flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all"
                        >
                           <Plus className="w-3 h-3" /> Add
                        </button>
-                    </div>
+                    )}
                  </div>
               </div>
-           ))}
+           )})}
         </div>
       </div>
+
+      {/* STICKY FOOTER CART PREVIEW */}
+      {totalQty > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-white via-white to-transparent z-40">
+          <Link
+            href="/customer/cart"
+            className="w-full bg-red-600 text-white rounded-2xl py-4 px-6 flex justify-between items-center shadow-xl hover:bg-red-700 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] opacity-80 font-bold uppercase tracking-wider">
+                  Total Item: {totalQty}
+                </p>
+                <p className="font-bold">Lihat Keranjang</p>
+              </div>
+            </div>
+            {/* Chevron dihapus atau diganti icon lain boleh, tapi dibiarkan kosong sesuai style search page */}
+          </Link>
+        </div>
+      )}
 
       {/* SIDEBAR NAVIGATION */}
       {isSidebarOpen && (
